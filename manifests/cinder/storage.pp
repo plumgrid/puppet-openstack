@@ -6,6 +6,7 @@ class openstack::cinder::storage(
   $rabbit_hosts          = false,
   $rabbit_port           = '5672',
   $rabbit_virtual_host   = '/',
+  $glance_api_servers    = '127.0.0.1:9292',
   $package_ensure        = 'present',
   $api_paste_config      = '/etc/cinder/api-paste.ini',
   $volume_package_ensure = 'present',
@@ -17,6 +18,8 @@ class openstack::cinder::storage(
   $volume_driver         = 'iscsi',
   $iscsi_ip_address      = '127.0.0.1',
   $setup_test_volume     = false,
+  $use_syslog            = false,
+  $log_facility          = 'LOG_USER',
   $debug                 = false,
   $verbose               = false
 ) {
@@ -31,6 +34,8 @@ class openstack::cinder::storage(
     rabbit_virtual_host => $rabbit_virtual_host,
     package_ensure      => $package_ensure,
     api_paste_config    => $api_paste_config,
+    use_syslog          => $use_syslog,
+    log_facility        => $log_facility,
     debug               => $debug,
     verbose             => $verbose,
   }
@@ -65,5 +70,9 @@ class openstack::cinder::storage(
     default:  {
       warning("Unsupported volume driver: ${volume_driver}, make sure you are configuring this yourself")
     }
+  }
+
+  class { '::cinder::glance':
+    glance_api_servers => $glance_api_servers
   }
 }

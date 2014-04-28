@@ -39,6 +39,7 @@ $glance_user_password    = 'glance_pass'
 $rabbit_password         = 'rabbit_pass'
 $rabbit_user             = 'rabbit_user'
 $secret_key              = 'secret_key'
+$mysql_root_password     = 'secret'
 # switch this to true to have all service log at verbose
 $verbose                 = false
 
@@ -89,6 +90,7 @@ node /openstack_all/ {
     verbose                 => $verbose,
     secret_key              => $secret_key,
     neutron                 => false,
+    mysql_root_password     => $mysql_root_password,
   }
 
   class { 'openstack::auth_file':
