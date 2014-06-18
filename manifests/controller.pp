@@ -280,6 +280,9 @@ class openstack::controller (
   $enable_l3_agent         = true,
   $enable_metadata_agent   = true,
   $metadata_shared_secret  = false,
+  $metadata_password       = 'notSet',
+  $metadata_auth_tenant    = 'metadata_auth_tenant',
+  $metadata_auth_user      = 'metadata_auth_user',
   $firewall_driver         = 'neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver',
   $neutron_db_user         = 'neutron',
   $neutron_db_name         = 'neutron',
@@ -294,7 +297,8 @@ class openstack::controller (
   # Syslog
   $use_syslog              = false,
   $log_facility            = 'LOG_USER',
-  $enabled                 = true
+  $enabled                 = true,
+  $fabric_eth              = 'eth1'
 ) {
 
   if $ovs_local_ip {
@@ -571,6 +575,9 @@ class openstack::controller (
       auth_url              => $neutron_auth_url,
       user_password         => $neutron_user_password,
       shared_secret         => $metadata_shared_secret,
+      metadata_password     => $metadata_password,
+      metadata_auth_tenant  => $metadata_auth_tenant,
+      metadata_auth_user    => $metadata_auth_user,
       # Keystone
       keystone_host         => $keystone_host,
       # Syslog
@@ -581,6 +588,7 @@ class openstack::controller (
       enable_server         => $enable_neutron_server,
       debug                 => $debug,
       verbose               => $verbose,
+      fabric_eth            => $fabric_eth,
     }
     if $enable_plumgrid {
       class { 'nova::compute::neutron':

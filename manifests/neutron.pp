@@ -196,6 +196,9 @@ class openstack::neutron (
   # Metadata configuration
   $shared_secret          = false,
   $metadata_ip            = '127.0.0.1',
+  $metadata_password      = 'notSet',
+  $metadata_auth_tenant   = 'metadata_tenant',
+  $metadata_auth_user     = 'metadata_user',
   # Neutron Authentication Information
   $auth_url               = 'http://localhost:35357/v2.0',
   # Rabbit Information
@@ -219,6 +222,7 @@ class openstack::neutron (
   $log_facility           = 'LOG_USER',
   $verbose                = false,
   $debug                  = false,
+  $fabric_eth             = 'eth1'
 ) {
 
   class { '::neutron':
@@ -273,6 +277,8 @@ class openstack::neutron (
         pg_username             => $pg_username,
         pg_password             => $pg_password,
         pg_servertimeout        => $pg_servertimeout,
+        enable_metadata_agent   => $enable_metadata_agent,
+        fabric_eth              => $fabric_eth,
       }
     }
   }
@@ -305,7 +311,9 @@ class openstack::neutron (
       fail('metadata_shared_secret parameter must be set when using metadata agent')
     }
     class { 'neutron::agents::metadata':
-      auth_password  => $user_password,
+      auth_password  => $metadata_password,
+      auth_tenant    => $metadata_auth_tenant,
+      auth_user      => $metadata_auth_user,
       shared_secret  => $shared_secret,
       auth_url       => $auth_url,
       metadata_ip    => $metadata_ip,
