@@ -169,6 +169,14 @@ class openstack::neutron (
   # enable or disable neutron
   $enabled                = true,
   $enable_server          = true,
+  # plumgrid plugin setting
+  $enable_plumgrid        = true,
+  $pg_director_server     = undef,
+  $pg_director_server_port = undef,
+  $pg_username            = undef,
+  $pg_password            = undef,
+  $pg_servertimeout       = undef,
+
   # Set DHCP/L3 Agents on Primary Controller
   $enable_dhcp_agent      = false,
   $enable_l3_agent        = false,
@@ -188,6 +196,9 @@ class openstack::neutron (
   # Metadata configuration
   $shared_secret          = false,
   $metadata_ip            = '127.0.0.1',
+  $metadata_password      = 'notSet',
+  $metadata_auth_tenant   = 'metadata_tenant',
+  $metadata_auth_user     = 'metadata_user',
   # Neutron Authentication Information
   $auth_url               = 'http://localhost:35357/v2.0',
   # Rabbit Information
@@ -211,6 +222,7 @@ class openstack::neutron (
   $log_facility           = 'LOG_USER',
   $verbose                = false,
   $debug                  = false,
+  $fabric_eth             = 'eth1'
 ) {
 
   class { '::neutron':
@@ -238,15 +250,36 @@ class openstack::neutron (
     } else {
       fail("Unsupported db type: ${db_type}. Only mysql is currently supported.")
     }
-    class { 'neutron::server':
-      auth_host     => $keystone_host,
-      auth_password => $user_password,
+    if $enable_ovs_agent {
+      class { 'neutron::server':
+        auth_host     => $keystone_host,
+        auth_password => $user_password,
+      }
+      class { 'neutron::plugins::ovs':
+        sql_connection      => $sql_connection,
+        sql_idle_timeout    => $sql_idle_timeout,
+        tenant_network_type => $tenant_network_type,
+        network_vlan_ranges => $network_vlan_ranges,
+      }
     }
-    class { 'neutron::plugins::ovs':
-      sql_connection      => $sql_connection,
-      sql_idle_timeout    => $sql_idle_timeout,
-      tenant_network_type => $tenant_network_type,
-      network_vlan_ranges => $network_vlan_ranges,
+    elsif $enable_plumgrid {
+      class { 'neutron::server':
+        auth_host     => $keystone_host,
+        auth_password => $user_password,
+        sql_connection => $sql_connection,
+        connection => $sql_connection,
+      }
+      class { 'neutron::plugins::plumgrid':
+        package_ensure          => $::plumgrid_pkg_update,
+        connection              => $sql_connection,
+        pg_director_server      => $pg_director_server,
+        pg_director_server_port => $pg_director_server_port,
+        pg_username             => $pg_username,
+        pg_password             => $pg_password,
+        pg_servertimeout        => $pg_servertimeout,
+        enable_metadata_agent   => $enable_metadata_agent,
+        fabric_eth              => $fabric_eth,
+      }
     }
   }
 
@@ -278,7 +311,9 @@ class openstack::neutron (
       fail('metadata_shared_secret parameter must be set when using metadata agent')
     }
     class { 'neutron::agents::metadata':
-      auth_password  => $user_password,
+      auth_password  => $metadata_password,
+      auth_tenant    => $metadata_auth_tenant,
+      auth_user      => $metadata_auth_user,
       shared_secret  => $shared_secret,
       auth_url       => $auth_url,
       metadata_ip    => $metadata_ip,

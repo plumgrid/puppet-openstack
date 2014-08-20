@@ -154,6 +154,7 @@ class openstack::controller (
   # Required Network
   $public_address,
   $admin_email,
+  $fqdn = $::fqdn,
   # required password
   $admin_password,
   $rabbit_password,
@@ -174,6 +175,13 @@ class openstack::controller (
   $cinder_user_password    = false,
   $cinder_db_password      = false,
   $swift_user_password     = false,
+  $enable_plumgrid         = true,
+  $pg_director_server      = undef,
+  $pg_director_server_port = undef,
+  $pg_username             = undef,
+  $pg_password             = undef,
+  $pg_servertimeout        = undef,
+
   # Database
   $db_host                 = '127.0.0.1',
   $db_type                 = 'mysql',
@@ -214,6 +222,7 @@ class openstack::controller (
   $purge_nova_config       = false,
   $enabled_apis            = 'ec2,osapi_compute,metadata',
   $nova_bind_address       = '0.0.0.0',
+  $libvirt_vif_driver      = 'nova.virt.libvirt.vif.LibvirtGenericVIFDriver',
   # Nova Networking
   $public_interface        = false,
   $private_interface       = false,
@@ -271,6 +280,9 @@ class openstack::controller (
   $enable_l3_agent         = true,
   $enable_metadata_agent   = true,
   $metadata_shared_secret  = false,
+  $metadata_password       = 'notSet',
+  $metadata_auth_tenant    = 'metadata_auth_tenant',
+  $metadata_auth_user      = 'metadata_auth_user',
   $firewall_driver         = 'neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver',
   $neutron_db_user         = 'neutron',
   $neutron_db_name         = 'neutron',
@@ -285,7 +297,8 @@ class openstack::controller (
   # Syslog
   $use_syslog              = false,
   $log_facility            = 'LOG_USER',
-  $enabled                 = true
+  $enabled                 = true,
+  $fabric_eth              = 'eth1'
 ) {
 
   if $ovs_local_ip {
@@ -548,6 +561,13 @@ class openstack::controller (
       db_password           => $neutron_db_password,
       # Plugin
       core_plugin           => $neutron_core_plugin,
+      enable_plumgrid       => $enable_plumgrid,
+      pg_director_server    => $pg_director_server,
+      pg_director_server_port => $pg_director_server_port,
+      pg_username           => $pg_username,
+      pg_password           => $pg_password,
+      pg_servertimeout      => $pg_servertimeout,
+
       # Neutron agents
       enable_dhcp_agent     => $enable_dhcp_agent,
       enable_l3_agent       => $enable_l3_agent,
@@ -555,6 +575,9 @@ class openstack::controller (
       auth_url              => $neutron_auth_url,
       user_password         => $neutron_user_password,
       shared_secret         => $metadata_shared_secret,
+      metadata_password     => $metadata_password,
+      metadata_auth_tenant  => $metadata_auth_tenant,
+      metadata_auth_user    => $metadata_auth_user,
       # Keystone
       keystone_host         => $keystone_host,
       # Syslog
@@ -565,6 +588,16 @@ class openstack::controller (
       enable_server         => $enable_neutron_server,
       debug                 => $debug,
       verbose               => $verbose,
+      fabric_eth            => $fabric_eth,
+    }
+    if $enable_plumgrid {
+      class { 'nova::compute::neutron':
+        libvirt_vif_driver => $libvirt_vif_driver,
+      }
+
+      nova_config { 'DEFAULT/scheduler_driver': value => 'nova.scheduler.filter_scheduler.FilterScheduler' }
+      nova_config { 'DEFAULT/libvirt_vif_type': value => 'ethernet'}
+      nova_config { 'DEFAULT/libvirt_cpu_mode': value => 'none'}
     }
   }
 
@@ -608,6 +641,7 @@ class openstack::controller (
   ######## Horizon ########
   if ($horizon) {
     class { 'openstack::horizon':
+      fqdn              => $fqdn,
       secret_key        => $secret_key,
       cache_server_ip   => $cache_server_ip,
       cache_server_port => $cache_server_port,
